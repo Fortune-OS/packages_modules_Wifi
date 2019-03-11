@@ -198,6 +198,8 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
 
     private boolean mVerboseLoggingEnabled = false;
 
+    private int mWifiLinkLayerStatsRemainingTries = 4;
+
     /**
      * Log with error attribute
      *
@@ -1412,7 +1414,9 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
         mLastLinkLayerStatsUpdate = mClock.getWallClockMillis();
         WifiLinkLayerStats stats = null;
         if (isPrimary()) {
-            stats = mWifiNative.getWifiLinkLayerStats(mInterfaceName);
+            if (mWifiLinkLayerStatsRemainingTries > 0) {
+                stats = mWifiNative.getWifiLinkLayerStats(mInterfaceName);
+            }
         } else {
             if (mVerboseLoggingEnabled) {
                 Log.w(getTag(), "Can't getWifiLinkLayerStats on secondary iface");
@@ -1425,6 +1429,11 @@ public class ClientModeImpl extends StateMachine implements ClientMode {
             mRunningBeaconCount = stats.beacon_rx;
             mWifiInfo.updatePacketRates(stats, mLastLinkLayerStatsUpdate);
         } else {
+            if (mWifiLinkLayerStatsRemainingTries > 0) {
+                mWifiLinkLayerStatsRemainingTries -= 1;
+                loge("Failed to getWifiLinkLayerStats, remaining tries: " +
+                        mWifiLinkLayerStatsRemainingTries);
+            }
             long mTxPkts = mFacade.getTxPackets(mInterfaceName);
             long mRxPkts = mFacade.getRxPackets(mInterfaceName);
             mWifiInfo.updatePacketRates(mTxPkts, mRxPkts, mLastLinkLayerStatsUpdate);
